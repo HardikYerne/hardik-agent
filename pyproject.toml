@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.backends.legacy:BuildBackend"
+
+[project]
+name = "hardik-agent"
+version = "1.0.0"
+description = "Voice controlled AI desktop assistant"
+requires-python = ">=3.12"
+dependencies = [
+    "typer",
+    "rich",
+    "python-dotenv",
+    "bcrypt",
+    "openai-whisper",
+    "sounddevice",
+    "scipy",
+    "pyttsx3",
+    "langchain",
+    "langchain-community",
+    "ollama",
+]
+
+[project.scripts]
+hardik-agent = "main:app"
