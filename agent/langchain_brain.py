@@ -132,14 +132,22 @@ def control_system(action):
             pyautogui.hotkey('win', 'd')
             return 'Desktop shown'
         elif action == 'lock_screen':
-            pyautogui.hotkey('win', 'l')
-            return 'Screen locked'
+            from security.safe_execution import safe_execute
+            return safe_execute('lock_screen', 'lock screen', lambda: _lock_screen())
         elif action == 'shutdown':
-            subprocess.run(['shutdown', '/s', '/t', '10'])
-            return 'Shutting down in 10 seconds'
+            from security.safe_execution import safe_execute
+            return safe_execute('shutdown', 'shutdown computer', lambda: _shutdown())
         return f'Unknown action: {action}'
     except Exception as e:
         return f'Error: {e}'
+
+def _lock_screen():
+    pyautogui.hotkey('win', 'l')
+    return 'Screen locked'
+
+def _shutdown():
+    subprocess.run(['shutdown', '/s', '/t', '10'])
+    return 'Shutting down in 10 seconds'
 
 def create_folder(folder_name):
     try:
@@ -194,6 +202,8 @@ search lofi on youtube -> {"action": "search_youtube", "value": "lofi"}
 send whatsapp to John hi -> {"action": "whatsapp", "contact": "John", "message": "hi"}
 take screenshot -> {"action": "screenshot"}
 increase volume -> {"action": "volume_up"}
+shutdown computer -> {"action": "shutdown"}
+lock my screen -> {"action": "lock_screen"}
 hello -> {"action": "talk", "value": "Hello! How can I help you?"}
 '''
 
