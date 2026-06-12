@@ -1,4 +1,4 @@
-﻿import ollama
+import ollama
 import subprocess
 import os
 import psutil
@@ -19,6 +19,14 @@ def open_application(app_name):
         return f'Could not open {app_name}: {e}'
 
 def open_website(url):
+    try:
+        if not url.startswith("http"):
+            url = "https://" + url
+        import subprocess
+        subprocess.Popen(["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", url])
+        return f"Opening {url} in Chrome"
+    except:
+        pass
     try:
         if not url.startswith('http'):
             url = 'https://' + url
@@ -158,7 +166,7 @@ def create_folder(folder_name):
         return f'Error: {e}'
 
 SYSTEM_PROMPT = '''
-You are Hardik Agent. Respond with ONE line of JSON only.
+You are Hexa. Respond with ONE line of JSON only.
 No explanation. No extra text. Just JSON.
 
 Rules:
@@ -292,3 +300,6 @@ def process_command(user_input: str) -> str:
     except Exception as e:
         print(f'Error: {e}')
         return 'I could not process that command.'
+
+
+

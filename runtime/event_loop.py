@@ -1,4 +1,4 @@
-﻿import threading
+import threading
 from voice.speech_to_text import transcribe
 from voice.text_to_speech import speak
 from agent.langgraph_brain import process_command
@@ -8,8 +8,8 @@ from rich.console import Console
 console = Console()
 
 def run(auto=False):
-    speak('Hardik Agent is ready.')
-    console.print('[bold green]Hardik Agent is running...[/bold green]')
+    speak('Hexa is ready. How can I help you?.')
+    console.print('[bold green]Hexa Agent is running...[/bold green]')
     console.print('[dim]Speak any command directly. Say stop agent to quit.[/dim]')
 
     # start system tray in background thread
@@ -26,7 +26,7 @@ def run(auto=False):
         try:
             # check if stop requested from tray
             if stop_event.is_set():
-                speak('Goodbye. Hardik Agent is shutting down.')
+                speak('Goodbye. Hexa Agent is shutting down.')
                 break
 
             console.print('\n[bold blue]Listening...[/bold blue]')
@@ -38,7 +38,7 @@ def run(auto=False):
             console.print(f'[yellow]You said: {text}[/yellow]')
 
             if 'stop agent' in text.lower():
-                speak('Goodbye. Hardik Agent is shutting down.')
+                speak('Goodbye. Hexa Agent is shutting down.')
                 break
 
             if 'last command' in text.lower() or 'what did i say' in text.lower():
@@ -60,3 +60,5 @@ def run(auto=False):
         except Exception as e:
             console.print(f'[red]Error: {e}[/red]')
             continue
+
+

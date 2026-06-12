@@ -1,4 +1,4 @@
-﻿import pystray
+import pystray
 from PIL import Image, ImageDraw
 import threading
 import sys
@@ -26,16 +26,16 @@ def run_tray(stop_event):
             sys.exit(0)
 
         menu = pystray.Menu(
-            pystray.MenuItem('Hardik Agent - Running', None, enabled=False),
+            pystray.MenuItem('Hexa Agent - Running', None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem('Stop Listening', on_stop),
             pystray.MenuItem('Exit', on_exit)
         )
 
         icon = pystray.Icon(
-            'hardik_agent',
+            'Hexa_agent',
             create_icon_image(),
-            'Hardik Agent',
+            'Hexa Agent',
             menu
         )
 
@@ -43,3 +43,4 @@ def run_tray(stop_event):
 
     except Exception as e:
         print(f'Tray error: {e}')
+

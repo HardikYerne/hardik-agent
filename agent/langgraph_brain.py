@@ -1,4 +1,4 @@
-﻿from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END
 from typing import TypedDict, Annotated
 import operator
 from agent.langchain_brain import process_command as lc_process
@@ -74,3 +74,4 @@ def process_command(user_input: str) -> str:
         print(f'Graph error: {e}')
         from agent.langchain_brain import process_command as fallback
         return fallback(user_input)
+
