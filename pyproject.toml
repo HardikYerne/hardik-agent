@@ -1,12 +1,14 @@
 [build-system]
 requires = ["setuptools", "wheel"]
-build-backend = "setuptools.backends.legacy:BuildBackend"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "hardik-agent"
+name = "hexa-agent"
 version = "1.0.0"
-description = "Voice controlled AI desktop assistant"
+description = "Hexa - Voice Controlled AI Desktop Assistant"
+readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
     "typer",
     "rich",
@@ -18,8 +20,20 @@ dependencies = [
     "pyttsx3",
     "langchain",
     "langchain-community",
+    "langchain-ollama",
+    "langgraph",
+    "chromadb",
+    "pyautogui",
+    "psutil",
+    "pillow",
+    "pystray",
+    "customtkinter",
+    "pyperclip",
     "ollama",
 ]
 
 [project.scripts]
-hardik-agent = "main:app"
+hexa-agent = "main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
