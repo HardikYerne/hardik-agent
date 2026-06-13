@@ -1,4 +1,4 @@
-import threading
+﻿import threading
 from voice.speech_to_text import transcribe
 from voice.text_to_speech import speak
 from agent.langgraph_brain import process_command
@@ -7,26 +7,32 @@ from rich.console import Console
 
 console = Console()
 
-def run(auto=False):
-    speak('Hexa is ready. How can I help you?.')
-    console.print('[bold green]Hexa Agent is running...[/bold green]')
-    console.print('[dim]Speak any command directly. Say stop agent to quit.[/dim]')
+def confirm_command(text):
+    speak(f'You said {text}. Say yes to confirm or repeat your command.')
+    response = transcribe()
+    if not response:
+        return False
+    if any(word in response.lower() for word in ['yes', 'correct', 'right', 'confirm', 'ok', 'okay', 'yeah', 'yep']):
+        return True
+    return False
 
-    # start system tray in background thread
+def run(auto=False):
+    speak('Hexa is ready.')
+    console.print('[bold green]Hexa is running...[/bold green]')
+    console.print('[dim]Speak any command. Say stop agent to quit.[/dim]')
+
     stop_event = threading.Event()
     try:
         from runtime.tray import run_tray
         tray_thread = threading.Thread(target=run_tray, args=(stop_event,), daemon=True)
         tray_thread.start()
-        console.print('[dim]System tray icon started.[/dim]')
     except Exception as e:
         console.print(f'[dim]Tray not available: {e}[/dim]')
 
     while True:
         try:
-            # check if stop requested from tray
             if stop_event.is_set():
-                speak('Goodbye. Hexa Agent is shutting down.')
+                speak('Goodbye.')
                 break
 
             console.print('\n[bold blue]Listening...[/bold blue]')
@@ -38,7 +44,7 @@ def run(auto=False):
             console.print(f'[yellow]You said: {text}[/yellow]')
 
             if 'stop agent' in text.lower():
-                speak('Goodbye. Hexa Agent is shutting down.')
+                speak('Goodbye. Hexa is shutting down.')
                 break
 
             if 'last command' in text.lower() or 'what did i say' in text.lower():
@@ -50,6 +56,12 @@ def run(auto=False):
                     speak(memory_text)
                     continue
 
+            # confirm before executing
+            confirmed = confirm_command(text)
+            if not confirmed:
+                speak('Please repeat your command.')
+                continue
+
             result = process_command(text)
             save_command(text, result)
             speak(result)
@@ -60,5 +72,3 @@ def run(auto=False):
         except Exception as e:
             console.print(f'[red]Error: {e}[/red]')
             continue
-
-

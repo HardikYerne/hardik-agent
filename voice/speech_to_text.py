@@ -1,64 +1,77 @@
-﻿import whisper
-import sounddevice as sd
-import scipy.io.wavfile as wav
-import numpy as np
-import os
-import tempfile
+﻿import speech_recognition as sr
 
-model = whisper.load_model('base')
+recognizer = sr.Recognizer()
+recognizer.energy_threshold = 200
+recognizer.dynamic_energy_threshold = True
+recognizer.pause_threshold = 1.0
+recognizer.operation_timeout = None
 
-NOISE_THRESHOLD = 400
+COMMON_CORRECTIONS = {
+    'open crow': 'open chrome',
+    'open crome': 'open chrome',
+    'open cream': 'open chrome',
+    'open chrome': 'open chrome',
+    'open crumb': 'open chrome',
+    'open you tube': 'open youtube',
+    'open you too': 'open youtube',
+    'what stop': 'whatsapp',
+    'what step': 'whatsapp',
+    'instagram': 'instagram',
+    'in instagram': 'open instagram',
+    'vs code': 'open vscode',
+    'the score': 'vscode',
+    'open the score': 'open vscode',
+    'file manager': 'open file manager',
+    'take a screenshot': 'take screenshot',
+    'screenshot': 'take screenshot',
+    'shut down': 'shutdown',
+    'volume up': 'increase volume',
+    'volume down': 'decrease volume',
+    'what time': 'what time is it',
+    'battery': 'check battery',
+    'check battery': 'check battery',
+}
 
-def record_audio(duration=6, sample_rate=16000):
-    print('Listening...')
-    audio = sd.rec(
-        int(duration * sample_rate),
-        samplerate=sample_rate,
-        channels=1,
-        dtype='int16'
-    )
-    sd.wait()
-    return audio, sample_rate
-
-def is_real_speech(audio):
-    volume = np.abs(audio).mean()
-    print(f'Volume level: {volume:.1f}')
-    return volume > NOISE_THRESHOLD
+def correct_text(text):
+    text_lower = text.lower().strip()
+    for wrong, correct in COMMON_CORRECTIONS.items():
+        if wrong in text_lower:
+            text_lower = text_lower.replace(wrong, correct)
+    return text_lower
 
 def transcribe():
-    audio, sample_rate = record_audio()
+    with sr.Microphone() as source:
+        print('Listening...')
+        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+        try:
+            audio = recognizer.listen(source, timeout=10, phrase_time_limit=10)
+            print('Processing...')
 
-    if not is_real_speech(audio):
-        print('Too quiet - skipping')
-        return ''
+            # try Indian English first
+            try:
+                text = recognizer.recognize_google(audio, language='en-IN')
+                text = correct_text(text)
+                print(f'You said: {text}')
+                return text
+            except:
+                pass
 
-    temp_path = os.path.join(tempfile.gettempdir(), 'hexa_audio.wav')
-    wav.write(temp_path, sample_rate, audio)
+            # fallback to regular English
+            try:
+                text = recognizer.recognize_google(audio, language='en-US')
+                text = correct_text(text)
+                print(f'You said: {text}')
+                return text
+            except:
+                pass
 
-    result = model.transcribe(
-        temp_path,
-        language='en',
-        fp16=False,
-        temperature=0,
-        condition_on_previous_text=False
-    )
-
-    text = result['text'].strip().lower()
-
-    # clean up common whisper hallucinations
-    hallucinations = [
-        'thank you', 'thanks for watching', 'subscribe',
-        'like and subscribe', 'see you next time',
-        'you', 'bye', 'okay', 'um', 'uh'
-    ]
-
-    for h in hallucinations:
-        if text == h or text == h + '.':
-            print(f'Hallucination detected: {text}')
             return ''
 
-    if len(text) < 3:
-        return ''
-
-    print(f'You said: {text}')
-    return text
+        except sr.WaitTimeoutError:
+            return ''
+        except sr.UnknownValueError:
+            print('Could not understand')
+            return ''
+        except Exception as e:
+            print(f'Error: {e}')
+            return ''
