@@ -1,4 +1,4 @@
-﻿import threading
+import threading
 from voice.speech_to_text import transcribe
 from voice.text_to_speech import speak
 from agent.langgraph_brain import process_command
@@ -6,15 +6,6 @@ from memory.memory_manager import save_command, get_recent_commands
 from rich.console import Console
 
 console = Console()
-
-def confirm_command(text):
-    speak(f'You said {text}. Say yes to confirm or repeat your command.')
-    response = transcribe()
-    if not response:
-        return False
-    if any(word in response.lower() for word in ['yes', 'correct', 'right', 'confirm', 'ok', 'okay', 'yeah', 'yep']):
-        return True
-    return False
 
 def run(auto=False):
     speak('Hexa is ready.')
@@ -55,12 +46,6 @@ def run(auto=False):
                         memory_text += f'{cmd}, '
                     speak(memory_text)
                     continue
-
-            # confirm before executing
-            confirmed = confirm_command(text)
-            if not confirmed:
-                speak('Please repeat your command.')
-                continue
 
             result = process_command(text)
             save_command(text, result)
