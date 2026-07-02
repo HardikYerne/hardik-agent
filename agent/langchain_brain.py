@@ -8,25 +8,19 @@ import pyautogui
 import pyperclip
 import json
 import time
+from agent.conversation import context
 
 llm_model = 'llama3.2:1b'
 
 def open_application(app_name):
     try:
         subprocess.Popen(['start', app_name], shell=True)
+        context.set_app(app_name)
         return f'Opening {app_name}'
     except Exception as e:
         return f'Could not open {app_name}: {e}'
 
 def open_website(url):
-    try:
-        if not url.startswith("http"):
-            url = "https://" + url
-        import subprocess
-        subprocess.Popen(["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", url])
-        return f"Opening {url} in Chrome"
-    except:
-        pass
     try:
         if not url.startswith('http'):
             url = 'https://' + url
@@ -45,25 +39,11 @@ def search_youtube(query):
     subprocess.Popen(['start', url], shell=True)
     return f'Searching YouTube for: {query}'
 
-def send_whatsapp_message(contact, message):
-    try:
-        subprocess.Popen(['start', 'https://web.whatsapp.com'], shell=True)
-        print('Opening WhatsApp Web...')
-        time.sleep(8)
-        pyautogui.hotkey('ctrl', 'f')
-        time.sleep(1)
-        pyperclip.copy(contact)
-        pyautogui.hotkey('ctrl', 'v')
-        time.sleep(2)
-        pyautogui.press('enter')
-        time.sleep(1)
-        pyperclip.copy(message)
-        pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.5)
-        pyautogui.press('enter')
-        return f'Message sent to {contact} on WhatsApp'
-    except Exception as e:
-        return f'Could not send message: {e}'
+def send_platform_message(platform, contact, message):
+    from automation.messaging import send_message
+    context.set_platform(platform)
+    context.set_contact(contact)
+    return send_message(platform, contact, message)
 
 def get_battery():
     try:
@@ -77,26 +57,21 @@ def get_battery():
 
 def get_cpu():
     try:
-        cpu = psutil.cpu_percent(interval=1)
-        return f'CPU usage is {cpu}%'
+        return f'CPU usage is {psutil.cpu_percent(interval=1)}%'
     except Exception as e:
         return f'Error: {e}'
 
 def get_ram():
     try:
         ram = psutil.virtual_memory()
-        used = round(ram.used/(1024**3), 2)
-        total = round(ram.total/(1024**3), 2)
-        return f'RAM usage is {used}GB of {total}GB at {ram.percent}%'
+        return f'RAM usage is {round(ram.used/(1024**3),2)}GB of {round(ram.total/(1024**3),2)}GB at {ram.percent}%'
     except Exception as e:
         return f'Error: {e}'
 
 def get_disk():
     try:
         disk = psutil.disk_usage('C:/')
-        used = round(disk.used/(1024**3), 2)
-        total = round(disk.total/(1024**3), 2)
-        return f'Disk usage is {used}GB of {total}GB at {disk.percent}%'
+        return f'Disk usage is {round(disk.used/(1024**3),2)}GB of {round(disk.total/(1024**3),2)}GB at {disk.percent}%'
     except Exception as e:
         return f'Error: {e}'
 
@@ -106,8 +81,7 @@ def get_time():
 
 def get_ip():
     try:
-        ip = socket.gethostbyname(socket.gethostname())
-        return f'Your IP address is {ip}'
+        return f'Your IP address is {socket.gethostbyname(socket.gethostname())}'
     except Exception as e:
         return f'Error: {e}'
 
@@ -141,15 +115,15 @@ def control_system(action):
             return 'Desktop shown'
         elif action == 'lock_screen':
             from security.safe_execution import safe_execute
-            return safe_execute('lock_screen', 'lock screen', lambda: _lock_screen())
+            return safe_execute('lock_screen', 'lock screen', lambda: _lock())
         elif action == 'shutdown':
             from security.safe_execution import safe_execute
-            return safe_execute('shutdown', 'shutdown computer', lambda: _shutdown())
+            return safe_execute('shutdown', 'shutdown', lambda: _shutdown())
         return f'Unknown action: {action}'
     except Exception as e:
         return f'Error: {e}'
 
-def _lock_screen():
+def _lock():
     pyautogui.hotkey('win', 'l')
     return 'Screen locked'
 
@@ -165,156 +139,72 @@ def create_folder(folder_name):
     except Exception as e:
         return f'Error: {e}'
 
-SYSTEM_PROMPT = '''You are Hexa, an AI desktop assistant on Windows.
-Respond with ONE line of JSON only. No extra text.
+def build_system_prompt():
+    ctx = context.get_context_summary()
+    current = ''
+    if context.current_platform:
+        current += f'Current platform: {context.current_platform}\n'
+    if context.current_contact:
+        current += f'Current contact: {context.current_contact}\n'
+    if context.current_app:
+        current += f'Current app: {context.current_app}\n'
 
-Rules:
-- Only one JSON object
-- No text before or after
-- No double braces
+    return f'''You are Hexa, an AI desktop assistant on Windows.
+Respond with ONE line of JSON only. No extra text. No double braces.
+
+{ctx}
+{current}
+
+IMPORTANT CONTEXT RULES:
+- If user says "open mummy" or "open john" after opening whatsapp - they want to open that contact chat
+- If user says "send message hi" after opening a contact - send that message to current contact
+- If user says a name after opening a messaging app - that is the contact name
+- Remember the context from previous commands
 
 Actions:
-open any app -> {"action": "open_app", "value": "appname"}
-open any website -> {"action": "open_web", "value": "site.com"}
-search google -> {"action": "search_google", "value": "query"}
-search youtube -> {"action": "search_youtube", "value": "query"}
-whatsapp message -> {"action": "whatsapp", "contact": "name", "message": "text"}
-battery -> {"action": "battery"}
-cpu -> {"action": "cpu"}
-ram -> {"action": "ram"}
-disk -> {"action": "disk"}
-time -> {"action": "time"}
-ip -> {"action": "ip"}
-screenshot -> {"action": "screenshot"}
-volume up -> {"action": "volume_up"}
-volume down -> {"action": "volume_down"}
-mute -> {"action": "mute"}
-minimize -> {"action": "minimize"}
-maximize -> {"action": "maximize"}
-close window -> {"action": "close_window"}
-show desktop -> {"action": "show_desktop"}
-lock screen -> {"action": "lock_screen"}
-shutdown -> {"action": "shutdown"}
-create folder -> {"action": "create_folder", "value": "name"}
-conversation -> {"action": "talk", "value": "reply"}
-
-APPS - use open_app:
-chrome, firefox, edge, opera, brave -> browser
-spotify, vlc, winamp, musicbee -> music
-whatsapp, telegram, discord, slack, skype, zoom, teams -> communication
-vscode, pycharm, intellij, notepad, notepad++, sublime -> coding
-word, excel, powerpoint, onenote, outlook -> microsoft office
-photoshop, illustrator, gimp, paint -> design
-steam, epic, roblox, minecraft -> games
-obs, streamlabs -> streaming
-git, github desktop -> version control
-postman -> api testing
-android studio -> mobile dev
-virtualbox, vmware -> virtual machine
-7zip, winrar -> archive
-vlc -> media player
-task manager, taskmgr -> system
-calculator, calc -> calculator
-camera -> camera
-settings -> settings
-file explorer, explorer -> files
-control panel -> control
-cmd, command prompt -> terminal
-powershell -> shell
-paint -> drawing
-snipping tool -> screenshot
-
-WEBSITES - use open_web:
-youtube.com -> youtube, yt
-google.com -> google
-gmail.com -> gmail
-drive.google.com -> google drive
-docs.google.com -> google docs
-sheets.google.com -> google sheets
-meet.google.com -> google meet
-facebook.com -> facebook, fb
-instagram.com -> instagram
-twitter.com -> twitter, x
-linkedin.com -> linkedin
-whatsapp.com/web -> whatsapp web
-web.whatsapp.com -> whatsapp web
-telegram.org -> telegram web
-discord.com -> discord web
-netflix.com -> netflix
-hotstar.com -> hotstar, disney hotstar
-primevideo.com -> amazon prime, prime video
-spotify.com -> spotify web
-github.com -> github
-stackoverflow.com -> stackoverflow
-chatgpt.com -> chatgpt
-claude.ai -> claude
-gemini.google.com -> gemini
-amazon.in -> amazon india
-amazon.com -> amazon
-flipkart.com -> flipkart
-myntra.com -> myntra
-swiggy.com -> swiggy
-zomato.com -> zomato
-paytm.com -> paytm
-phonepe.com -> phonepe
-gpay -> pay.google.com
-sbi.co.in -> sbi
-hdfcbank.com -> hdfc
-icicibank.com -> icici
-maps.google.com -> google maps
-translate.google.com -> google translate
-news.google.com -> google news
-weather.com -> weather
-reddit.com -> reddit
-quora.com -> quora
-medium.com -> medium
-wikipedia.org -> wikipedia
-canva.com -> canva
-figma.com -> figma
-notion.so -> notion
-trello.com -> trello
-zoom.us -> zoom web
-udemy.com -> udemy
-coursera.org -> coursera
-leetcode.com -> leetcode
-hackerrank.com -> hackerrank
+open any app -> {{"action": "open_app", "value": "appname"}}
+open any website -> {{"action": "open_web", "value": "site.com"}}
+search google -> {{"action": "search_google", "value": "query"}}
+search youtube -> {{"action": "search_youtube", "value": "query"}}
+send message -> {{"action": "message", "platform": "whatsapp", "contact": "name", "message": "text"}}
+open contact chat -> {{"action": "open_contact", "platform": "whatsapp", "contact": "name"}}
+send to current contact -> {{"action": "send_current", "message": "text"}}
+battery -> {{"action": "battery"}}
+cpu -> {{"action": "cpu"}}
+ram -> {{"action": "ram"}}
+disk -> {{"action": "disk"}}
+time -> {{"action": "time"}}
+ip -> {{"action": "ip"}}
+screenshot -> {{"action": "screenshot"}}
+volume up -> {{"action": "volume_up"}}
+volume down -> {{"action": "volume_down"}}
+mute -> {{"action": "mute"}}
+minimize -> {{"action": "minimize"}}
+maximize -> {{"action": "maximize"}}
+close window -> {{"action": "close_window"}}
+show desktop -> {{"action": "show_desktop"}}
+lock screen -> {{"action": "lock_screen"}}
+shutdown -> {{"action": "shutdown"}}
+create folder -> {{"action": "create_folder", "value": "name"}}
+conversation -> {{"action": "talk", "value": "reply"}}
 
 Examples:
-open spotify -> {"action": "open_app", "value": "spotify"}
-open netflix -> {"action": "open_web", "value": "netflix.com"}
-open whatsapp -> {"action": "open_app", "value": "whatsapp"}
-open whatsapp web -> {"action": "open_web", "value": "web.whatsapp.com"}
-open instagram -> {"action": "open_web", "value": "instagram.com"}
-open gmail -> {"action": "open_web", "value": "gmail.com"}
-open google drive -> {"action": "open_web", "value": "drive.google.com"}
-open chatgpt -> {"action": "open_web", "value": "chatgpt.com"}
-open youtube -> {"action": "open_web", "value": "youtube.com"}
-open discord -> {"action": "open_app", "value": "discord"}
-open telegram -> {"action": "open_app", "value": "telegram"}
-open zoom -> {"action": "open_app", "value": "zoom"}
-open vs code -> {"action": "open_app", "value": "code"}
-open notepad -> {"action": "open_app", "value": "notepad"}
-open calculator -> {"action": "open_app", "value": "calc"}
-open file manager -> {"action": "open_app", "value": "explorer"}
-open task manager -> {"action": "open_app", "value": "taskmgr"}
-open settings -> {"action": "open_app", "value": "ms-settings:"}
-open swiggy -> {"action": "open_web", "value": "swiggy.com"}
-open zomato -> {"action": "open_web", "value": "zomato.com"}
-open flipkart -> {"action": "open_web", "value": "flipkart.com"}
-open amazon -> {"action": "open_web", "value": "amazon.in"}
-open hotstar -> {"action": "open_web", "value": "hotstar.com"}
-open prime video -> {"action": "open_web", "value": "primevideo.com"}
-open google maps -> {"action": "open_web", "value": "maps.google.com"}
-open translate -> {"action": "open_web", "value": "translate.google.com"}
-search lofi on youtube -> {"action": "search_youtube", "value": "lofi"}
-search python on google -> {"action": "search_google", "value": "python"}
-what time is it -> {"action": "time"}
-check battery -> {"action": "battery"}
-check ram -> {"action": "ram"}
-take screenshot -> {"action": "screenshot"}
-increase volume -> {"action": "volume_up"}
-shutdown -> {"action": "shutdown"}
-hello -> {"action": "talk", "value": "Hello! How can I help you?"}'''
+open whatsapp web -> {{"action": "open_web", "value": "web.whatsapp.com"}}
+open mummy [after whatsapp opened] -> {{"action": "open_contact", "platform": "whatsapp", "contact": "mummy"}}
+send message hi [after contact opened] -> {{"action": "send_current", "message": "hi"}}
+open john on whatsapp -> {{"action": "open_contact", "platform": "whatsapp", "contact": "john"}}
+send whatsapp to rahul hello -> {{"action": "message", "platform": "whatsapp", "contact": "rahul", "message": "hello"}}
+send instagram message to priya how are you -> {{"action": "message", "platform": "instagram", "contact": "priya", "message": "how are you"}}
+send telegram to dad coming home -> {{"action": "message", "platform": "telegram", "contact": "dad", "message": "coming home"}}
+open netflix -> {{"action": "open_web", "value": "netflix.com"}}
+open chrome -> {{"action": "open_app", "value": "chrome"}}
+search lofi on youtube -> {{"action": "search_youtube", "value": "lofi"}}
+what time is it -> {{"action": "time"}}
+check battery -> {{"action": "battery"}}
+take screenshot -> {{"action": "screenshot"}}
+increase volume -> {{"action": "volume_up"}}
+hello -> {{"action": "talk", "value": "Hello! How can I help you?"}}
+'''
 
 def extract_json(text):
     try:
@@ -330,13 +220,62 @@ def extract_json(text):
         print(f'JSON error: {e}')
     return {'action': 'talk', 'value': 'I could not process that command.'}
 
+def open_contact_chat(platform, contact):
+    try:
+        import pyautogui
+        import pyperclip
+        import time
+
+        context.set_platform(platform)
+        context.set_contact(contact)
+
+        print(f'Opening {contact} chat on {platform}')
+        time.sleep(1)
+
+        pyautogui.hotkey('ctrl', 'f')
+        time.sleep(1)
+        pyperclip.copy(contact)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(2)
+        pyautogui.press('enter')
+        time.sleep(1)
+
+        return f'Opened {contact} chat on {platform}. What message do you want to send?'
+    except Exception as e:
+        return f'Could not open contact: {e}'
+
+def send_to_current_contact(message):
+    try:
+        import pyautogui
+        import pyperclip
+        import time
+
+        if not context.current_contact:
+            return 'No contact selected. Please say who to send to.'
+
+        print(f'Sending to {context.current_contact}: {message}')
+        pyperclip.copy(message)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.5)
+        pyautogui.press('enter')
+
+        contact = context.current_contact
+        return f'Message sent to {contact}'
+    except Exception as e:
+        return f'Could not send message: {e}'
+
 def process_command(user_input: str) -> str:
     try:
         print(f'Processing: {user_input}')
+
+        if len(user_input.strip()) < 3:
+            return 'Please say your command clearly.'
+
+        system_prompt = build_system_prompt()
         response = ollama.chat(
             model=llm_model,
             messages=[
-                {'role': 'system', 'content': SYSTEM_PROMPT},
+                {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': user_input}
             ]
         )
@@ -345,62 +284,91 @@ def process_command(user_input: str) -> str:
         decision = extract_json(raw)
         action = decision.get('action', 'talk')
 
+        result = 'How can I help you?'
+
         if action == 'open_app':
-            return open_application(decision.get('value', ''))
+            result = open_application(decision.get('value', ''))
+
         elif action == 'open_web':
-            return open_website(decision.get('value', ''))
+            url = decision.get('value', '')
+            result = open_website(url)
+            if 'whatsapp' in url:
+                context.set_platform('whatsapp')
+            elif 'instagram' in url:
+                context.set_platform('instagram')
+            elif 'telegram' in url:
+                context.set_platform('telegram')
+
         elif action == 'search_google':
-            return search_google(decision.get('value', ''))
+            result = search_google(decision.get('value', ''))
+
         elif action == 'search_youtube':
-            return search_youtube(decision.get('value', ''))
-        elif action == 'whatsapp':
+            result = search_youtube(decision.get('value', ''))
+
+        elif action == 'message':
+            platform = decision.get('platform', context.current_platform or 'whatsapp')
             contact = decision.get('contact', '')
             message = decision.get('message', '')
             if contact and message:
-                return send_whatsapp_message(contact, message)
-            return 'Please say contact name and message.'
+                result = send_platform_message(platform, contact, message)
+            else:
+                result = 'Please say the contact name and message.'
+
+        elif action == 'open_contact':
+            platform = decision.get('platform', context.current_platform or 'whatsapp')
+            contact = decision.get('contact', '')
+            if contact:
+                result = open_contact_chat(platform, contact)
+            else:
+                result = 'Please say the contact name.'
+
+        elif action == 'send_current':
+            message = decision.get('message', '')
+            if message:
+                result = send_to_current_contact(message)
+            else:
+                result = 'What message do you want to send?'
+
         elif action == 'battery':
-            return get_battery()
+            result = get_battery()
         elif action == 'cpu':
-            return get_cpu()
+            result = get_cpu()
         elif action == 'ram':
-            return get_ram()
+            result = get_ram()
         elif action == 'disk':
-            return get_disk()
+            result = get_disk()
         elif action == 'time':
-            return get_time()
+            result = get_time()
         elif action == 'ip':
-            return get_ip()
+            result = get_ip()
         elif action == 'screenshot':
-            return control_system('screenshot')
+            result = control_system('screenshot')
         elif action == 'volume_up':
-            return control_system('volume_up')
+            result = control_system('volume_up')
         elif action == 'volume_down':
-            return control_system('volume_down')
+            result = control_system('volume_down')
         elif action == 'mute':
-            return control_system('mute')
+            result = control_system('mute')
         elif action == 'minimize':
-            return control_system('minimize')
+            result = control_system('minimize')
         elif action == 'maximize':
-            return control_system('maximize')
+            result = control_system('maximize')
         elif action == 'close_window':
-            return control_system('close_window')
+            result = control_system('close_window')
         elif action == 'show_desktop':
-            return control_system('show_desktop')
+            result = control_system('show_desktop')
         elif action == 'lock_screen':
-            return control_system('lock_screen')
+            result = control_system('lock_screen')
         elif action == 'shutdown':
-            return control_system('shutdown')
+            result = control_system('shutdown')
         elif action == 'create_folder':
-            return create_folder(decision.get('value', 'New Folder'))
+            result = create_folder(decision.get('value', 'New Folder'))
         elif action == 'talk':
-            return decision.get('value', 'How can I help you?')
-        else:
-            return 'How can I help you?'
+            result = decision.get('value', 'How can I help you?')
+
+        context.update(user_input, action, result)
+        return result
 
     except Exception as e:
         print(f'Error: {e}')
         return 'I could not process that command.'
-
-
-
