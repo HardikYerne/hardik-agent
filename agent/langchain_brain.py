@@ -1,3 +1,13 @@
+
+def handle_eye_control(user_input):
+    user_input = user_input.lower()
+    if any(word in user_input for word in ['start', 'enable', 'open', 'turn on']):
+        from automation.eye_control import start_eye_control
+        return start_eye_control()
+    elif any(word in user_input for word in ['stop', 'disable', 'close', 'turn off']):
+        from automation.eye_control import stop_eye_control
+        return stop_eye_control()
+    return None
 import ollama
 import subprocess
 import os
@@ -268,6 +278,11 @@ def process_command(user_input: str) -> str:
     try:
         print(f'Processing: {user_input}')
 
+        if 'eye' in user_input.lower():
+            result = handle_eye_control(user_input)
+            if result:
+                return result
+
         if len(user_input.strip()) < 3:
             return 'Please say your command clearly.'
 
@@ -285,6 +300,14 @@ def process_command(user_input: str) -> str:
         action = decision.get('action', 'talk')
 
         result = 'How can I help you?'
+
+        if 'eye control' in user_input.lower() or 'eye tracking' in user_input.lower():
+            if any(word in user_input.lower() for word in ['start', 'enable', 'open', 'turn on']):
+                from automation.eye_control import start_eye_control
+                return start_eye_control()
+            elif any(word in user_input.lower() for word in ['stop', 'disable', 'close', 'turn off']):
+                from automation.eye_control import stop_eye_control
+                return stop_eye_control()
 
         if action == 'open_app':
             result = open_application(decision.get('value', ''))
