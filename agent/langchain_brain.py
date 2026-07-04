@@ -363,6 +363,14 @@ def process_command(user_input: str) -> str:
             result = control_system('shutdown')
         elif action == 'create_folder':
             result = create_folder(decision.get('value', 'New Folder'))
+        elif action == 'eye_control_start':
+            from automation.eye_control import start_eye_control
+            result = start_eye_control()
+
+        elif action == 'eye_control_stop':
+            from automation.eye_control import stop_eye_control
+            result = stop_eye_control()
+
         elif action == 'talk':
             result = decision.get('value', 'How can I help you?')
 
