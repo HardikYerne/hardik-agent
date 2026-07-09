@@ -1,4 +1,26 @@
 
+def search_youtube_and_play(query):
+    import subprocess
+    import time
+    import pyautogui
+    url = f'https://www.youtube.com/results?search_query={query.replace(" ", "+")}'
+    subprocess.Popen(['start', url], shell=True)
+    print(f'Searching YouTube for: {query}')
+    time.sleep(4)
+    # click first video result
+    # youtube first video is usually at around these coordinates
+    # we use keyboard shortcut instead - more reliable
+    pyautogui.hotkey('alt', 'd')
+    time.sleep(0.5)
+    pyautogui.press('enter')
+    time.sleep(2)
+    # press tab to focus first video then enter to play
+    for _ in range(5):
+        pyautogui.press('tab')
+        time.sleep(0.2)
+    pyautogui.press('enter')
+    return f'Searching and playing first result for: {query}'
+
 def handle_eye_control(user_input):
     user_input = user_input.lower()
     if any(word in user_input for word in ['start', 'enable', 'open', 'turn on']):
@@ -277,6 +299,14 @@ def send_to_current_contact(message):
 def process_command(user_input: str) -> str:
     try:
         print(f'Processing: {user_input}')
+
+        if 'youtube' in user_input.lower() and any(word in user_input.lower() for word in ['play', 'watch', 'first video', 'first result']):
+            import re
+            query = user_input.lower()
+            for remove in ['search youtube for', 'play', 'watch', 'on youtube', 'first video', 'first result', 'and']:
+                query = query.replace(remove, '')
+            query = query.strip()
+            return search_youtube_and_play(query)
 
         if 'eye' in user_input.lower():
             result = handle_eye_control(user_input)
